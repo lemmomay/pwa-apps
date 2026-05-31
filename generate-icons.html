@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Icon Generator</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #1a1a2e; color: #fff; }
+        canvas { border: 1px solid #333; margin: 10px; }
+        .btn {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover { opacity: 0.9; }
+        .preview { display: flex; flex-wrap: wrap; align-items: center; }
+        .info { margin: 20px 0; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <h1>PWA Icon Generator</h1>
+    <div class="info">
+        <p>点击按钮生成图标，然后右键保存图片到对应的 PWA 目录</p>
+    </div>
+    
+    <label>图标文字: <input type="text" id="text" value="H" maxlength="2" style="padding:8px;border-radius:4px;border:none;width:60px;font-size:18px;text-align:center"></label>
+    <button class="btn" onclick="generate()">生成图标</button>
+    
+    <div class="preview" id="preview"></div>
+
+    <script>
+        function generate() {
+            const text = document.getElementById('text').value || 'H';
+            const preview = document.getElementById('preview');
+            preview.innerHTML = '';
+            
+            [192, 512].forEach(size => {
+                const canvas = document.createElement('canvas');
+                canvas.width = size;
+                canvas.height = size;
+                const ctx = canvas.getContext('2d');
+                
+                // 背景渐变
+                const gradient = ctx.createLinearGradient(0, 0, size, size);
+                gradient.addColorStop(0, '#667eea');
+                gradient.addColorStop(1, '#764ba2');
+                
+                // 圆角矩形
+                const radius = size * 0.2;
+                ctx.beginPath();
+                ctx.moveTo(radius, 0);
+                ctx.lineTo(size - radius, 0);
+                ctx.quadraticCurveTo(size, 0, size, radius);
+                ctx.lineTo(size, size - radius);
+                ctx.quadraticCurveTo(size, size, size - radius, size);
+                ctx.lineTo(radius, size);
+                ctx.quadraticCurveTo(0, size, 0, size - radius);
+                ctx.lineTo(0, radius);
+                ctx.quadraticCurveTo(0, 0, radius, 0);
+                ctx.closePath();
+                ctx.fillStyle = gradient;
+                ctx.fill();
+                
+                // 文字
+                ctx.fillStyle = 'white';
+                ctx.font = `bold ${size * 0.5}px -apple-system, BlinkMacSystemFont, sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(text, size/2, size/2);
+                
+                // 添加到页面
+                const link = document.createElement('a');
+                link.download = `icon-${size}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.innerHTML = `<div style="text-align:center">
+                    <div style="font-size:12px;margin-bottom:5px">${size}x${size}</div>
+                </div>`;
+                link.style.textDecoration = 'none';
+                link.style.color = '#fff';
+                
+                const container = document.createElement('div');
+                container.style.textAlign = 'center';
+                container.appendChild(canvas);
+                container.appendChild(link);
+                preview.appendChild(container);
+            });
+        }
+        
+        generate();
+    </script>
+</body>
+</html>
