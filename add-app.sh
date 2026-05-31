@@ -14,6 +14,9 @@ WEBSITE_URL="$2"
 ICON_TEXT="${3:-${APP_NAME:0:1}}"
 APP_DIR="$APP_NAME"
 
+# 从URL提取域名
+DOMAIN=$(echo "$WEBSITE_URL" | sed -E 's|^https?://||;s|/.*||')
+
 # 检查目录是否已存在
 if [ -d "$APP_DIR" ]; then
     echo "错误: 目录 '$APP_DIR' 已存在"
@@ -22,13 +25,14 @@ fi
 
 echo "创建 PWA 应用: $APP_NAME"
 echo "网站 URL: $WEBSITE_URL"
+echo "域名: $DOMAIN"
 echo "图标文字: $ICON_TEXT"
 
 # 创建目录
 mkdir -p "$APP_DIR"
 
 # 创建 index.html（跳转模式）
-cat > "$APP_DIR/index.html" << EOF
+cat > "$APP_DIR/index.html" << 'HTMLEOF'
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -38,51 +42,33 @@ cat > "$APP_DIR/index.html" << EOF
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#1a1a2e">
-    <title>${APP_NAME}</title>
+    <title>APPNAME_PLACEHOLDER</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="icon-192.png">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body {
             width: 100%;
             height: 100%;
-            overflow: hidden;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
         }
-        .splash {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        .container {
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
-            transition: opacity 0.5s, transform 0.5s;
-        }
-        .splash.hide {
-            opacity: 0;
-            transform: scale(1.1);
+            padding: 20px;
+            text-align: center;
         }
         .app-icon {
             width: 100px;
             height: 100px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 48px;
+            border-radius: 22px;
             margin-bottom: 24px;
-            box-shadow: 0 20px 40px rgba(102, 126, 234, 0.4);
-            animation: float 3s ease-in-out infinite;
-        }
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            background: #fff;
+            object-fit: contain;
         }
         .app-name {
             font-size: 28px;
@@ -90,139 +76,208 @@ cat > "$APP_DIR/index.html" << EOF
             color: #fff;
             margin-bottom: 8px;
         }
-        .app-desc {
+        .app-url {
             font-size: 14px;
-            color: rgba(255, 255, 255, 0.6);
+            color: rgba(255,255,255,0.5);
             margin-bottom: 40px;
         }
-        .launch-btn {
-            padding: 16px 48px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #fff;
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            width: 100%;
+            max-width: 300px;
+        }
+        .btn {
+            padding: 16px 32px;
             border: none;
             border-radius: 50px;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 600;
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn-install {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
             box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
         }
-        .launch-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.5);
+        .btn-open {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.2);
         }
-        .launch-btn:active {
-            transform: translateY(0);
+        .btn-icon { font-size: 20px; }
+        .hint {
+            margin-top: 30px;
+            padding: 16px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            max-width: 320px;
         }
-        .countdown {
-            margin-top: 20px;
+        .hint-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+        .hint-text {
             font-size: 13px;
-            color: rgba(255, 255, 255, 0.4);
+            color: rgba(255,255,255,0.6);
+            line-height: 1.6;
         }
-        .progress-bar {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            height: 3px;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-            transition: width 0.1s linear;
+        .installed-badge {
+            display: none;
+            padding: 8px 16px;
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            border-radius: 20px;
+            color: #4CAF50;
+            font-size: 13px;
+            margin-bottom: 20px;
+        }
+        .installed-badge.show {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
     </style>
 </head>
 <body>
-    <div class="splash" id="splash">
-        <div class="app-icon">${ICON_TEXT:0:1}</div>
-        <div class="app-name">${APP_NAME}</div>
-        <div class="app-desc">正在启动...</div>
-        <button class="launch-btn" onclick="launch()">立即打开</button>
-        <div class="countdown" id="countdown">3 秒后自动跳转</div>
-        <div class="progress-bar" id="progress"></div>
+    <div class="container">
+        <div class="installed-badge" id="installedBadge">
+            <span>✓</span> 已安装为 PWA
+        </div>
+        
+        <img class="app-icon" id="appIcon" src="" alt="icon">
+        <div class="app-name">APPNAME_PLACEHOLDER</div>
+        <div class="app-url">DOMAIN_PLACEHOLDER</div>
+        
+        <div class="btn-group">
+            <button class="btn btn-install" id="installBtn" onclick="installPWA()">
+                <span class="btn-icon">📲</span>
+                安装到桌面
+            </button>
+            <button class="btn btn-open" onclick="openSite()">
+                <span class="btn-icon">🌐</span>
+                直接打开网站
+            </button>
+        </div>
+        
+        <div class="hint">
+            <div class="hint-title">💡 为什么要安装？</div>
+            <div class="hint-text">
+                安装后可获得：<br>
+                • 桌面图标，一键启动<br>
+                • 全屏体验，无地址栏<br>
+                • 更快的加载速度
+            </div>
+        </div>
     </div>
 
     <script>
-        const TARGET_URL = '${WEBSITE_URL}';
-        let countdown = 3;
-        let launched = false;
-
-        function launch() {
-            if (launched) return;
-            launched = true;
-            
-            const splash = document.getElementById('splash');
-            splash.classList.add('hide');
-            
-            setTimeout(() => {
-                window.location.href = TARGET_URL;
-            }, 500);
+        const SITE_URL = 'WEBSITEURL_PLACEHOLDER';
+        const SITE_DOMAIN = 'DOMAIN_PLACEHOLDER';
+        
+        function loadFavicon() {
+            const icon = document.getElementById('appIcon');
+            icon.src = `https://www.google.com/s2/favicons?domain=${SITE_DOMAIN}&sz=128`;
+            icon.onerror = function() {
+                this.src = `https://${SITE_DOMAIN}/favicon.ico`;
+                this.onerror = function() { this.style.display = 'none'; };
+            };
         }
-
-        const timer = setInterval(() => {
-            countdown--;
-            document.getElementById('countdown').textContent = countdown + ' 秒后自动跳转';
-            document.getElementById('progress').style.width = ((3 - countdown) / 3 * 100) + '%';
-            
-            if (countdown <= 0) {
-                clearInterval(timer);
-                launch();
+        
+        function checkInstalled() {
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
+                || window.navigator.standalone === true;
+            if (isStandalone) {
+                document.getElementById('installedBadge').classList.add('show');
+                document.getElementById('installBtn').style.display = 'none';
+                setTimeout(() => window.location.href = SITE_URL, 500);
             }
-        }, 1000);
+        }
+        
+        let deferredPrompt = null;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+        });
+        
+        async function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') window.location.href = SITE_URL;
+                deferredPrompt = null;
+            } else {
+                showInstallGuide();
+            }
+        }
+        
+        function showInstallGuide() {
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            let guide = isIOS 
+                ? `iOS 安装步骤：\n1. 点击底部「分享」按钮 ⬆️\n2. 向下滑动找到「添加到主屏幕」\n3. 点击「添加」完成安装`
+                : `安装步骤：\n1. 点击浏览器菜单 ⋮\n2. 选择「安装应用」或「添加到桌面」\n3. 确认安装`;
+            alert(guide);
+        }
+        
+        function openSite() {
+            window.location.href = SITE_URL;
+        }
+        
+        loadFavicon();
+        checkInstalled();
     </script>
 </body>
 </html>
-EOF
+HTMLEOF
+
+# 替换占位符
+sed -i "s|APPNAME_PLACEHOLDER|${APP_NAME}|g" "$APP_DIR/index.html"
+sed -i "s|WEBSITEURL_PLACEHOLDER|${WEBSITE_URL}|g" "$APP_DIR/index.html"
+sed -i "s|DOMAIN_PLACEHOLDER|${DOMAIN}|g" "$APP_DIR/index.html"
 
 # 创建 manifest.json
 cat > "$APP_DIR/manifest.json" << EOF
 {
     "name": "${APP_NAME}",
     "short_name": "${APP_NAME}",
-    "description": "${APP_NAME} - PWA 应用",
+    "description": "${APP_NAME} - ${DOMAIN}",
     "start_url": "./",
+    "scope": "./",
     "display": "standalone",
     "orientation": "any",
     "background_color": "#1a1a2e",
     "theme_color": "#1a1a2e",
     "icons": [
         {
-            "src": "icon-192.png",
+            "src": "https://www.google.com/s2/favicons?domain=${DOMAIN}&sz=192",
             "sizes": "192x192",
             "type": "image/png",
-            "purpose": "any maskable"
+            "purpose": "any"
         },
         {
-            "src": "icon-512.png",
+            "src": "https://www.google.com/s2/favicons?domain=${DOMAIN}&sz=512",
             "sizes": "512x512",
             "type": "image/png",
-            "purpose": "any maskable"
+            "purpose": "any"
         }
     ],
     "categories": ["entertainment"],
     "lang": "zh-CN",
-    "dir": "ltr"
+    "prefer_related_applications": false
 }
-EOF
-
-# 创建 SVG 图标
-cat > "$APP_DIR/icon.svg" << EOF
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <defs>
-    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
-    </linearGradient>
-  </defs>
-  <rect width="512" height="512" rx="100" fill="url(#grad)"/>
-  <text x="256" y="300" font-family="Arial, sans-serif" font-size="200" font-weight="bold" fill="white" text-anchor="middle">${ICON_TEXT:0:1}</text>
-</svg>
 EOF
 
 echo ""
 echo "✅ PWA 应用创建成功!"
-echo ""
-echo "下一步:"
-echo "1. 使用浏览器打开 generate-icons.html 生成 PNG 图标"
-echo "2. 将图标保存到 $APP_DIR/ 目录"
-echo "3. 在 index.html 中添加新应用卡片"
 echo ""
 echo "文件已创建:"
 ls -la "$APP_DIR/"

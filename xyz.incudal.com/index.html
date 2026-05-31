@@ -9,49 +9,31 @@
     <meta name="theme-color" content="#0f0c29">
     <title>Incudal</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="icon-192.png">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body {
             width: 100%;
             height: 100%;
-            overflow: hidden;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0c29;
         }
-        .splash {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+        .container {
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
-            transition: opacity 0.5s, transform 0.5s;
-        }
-        .splash.hide {
-            opacity: 0;
-            transform: scale(1.1);
+            padding: 20px;
+            text-align: center;
         }
         .app-icon {
             width: 100px;
             height: 100px;
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            border-radius: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 48px;
+            border-radius: 22px;
             margin-bottom: 24px;
-            box-shadow: 0 20px 40px rgba(240, 147, 251, 0.4);
-            animation: float 3s ease-in-out infinite;
-        }
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            background: #fff;
+            object-fit: contain;
         }
         .app-name {
             font-size: 28px;
@@ -59,82 +41,196 @@
             color: #fff;
             margin-bottom: 8px;
         }
-        .app-desc {
+        .app-url {
             font-size: 14px;
-            color: rgba(255, 255, 255, 0.6);
+            color: rgba(255,255,255,0.5);
             margin-bottom: 40px;
         }
-        .launch-btn {
-            padding: 16px 48px;
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            color: #fff;
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            width: 100%;
+            max-width: 300px;
+        }
+        .btn {
+            padding: 16px 32px;
             border: none;
             border-radius: 50px;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 600;
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+        .btn-install {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: #fff;
             box-shadow: 0 10px 30px rgba(240, 147, 251, 0.4);
         }
-        .launch-btn:hover {
-            transform: translateY(-2px);
+        .btn-install:hover {
             box-shadow: 0 15px 40px rgba(240, 147, 251, 0.5);
         }
-        .launch-btn:active {
-            transform: translateY(0);
+        .btn-open {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.2);
         }
-        .countdown {
-            margin-top: 20px;
+        .btn-open:hover {
+            background: rgba(255,255,255,0.15);
+        }
+        .btn-icon {
+            font-size: 20px;
+        }
+        .hint {
+            margin-top: 30px;
+            padding: 16px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            max-width: 320px;
+        }
+        .hint-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #f093fb;
+            margin-bottom: 8px;
+        }
+        .hint-text {
             font-size: 13px;
-            color: rgba(255, 255, 255, 0.4);
+            color: rgba(255,255,255,0.6);
+            line-height: 1.6;
         }
-        .progress-bar {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            height: 3px;
-            background: linear-gradient(90deg, #f093fb, #f5576c);
-            transition: width 0.1s linear;
+        .installed-badge {
+            display: none;
+            padding: 8px 16px;
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            border-radius: 20px;
+            color: #4CAF50;
+            font-size: 13px;
+            margin-bottom: 20px;
+        }
+        .installed-badge.show {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
     </style>
 </head>
 <body>
-    <div class="splash" id="splash">
-        <div class="app-icon">📦</div>
+    <div class="container">
+        <div class="installed-badge" id="installedBadge">
+            <span>✓</span> 已安装为 PWA
+        </div>
+        
+        <img class="app-icon" id="appIcon" src="" alt="icon">
         <div class="app-name">Incudal</div>
-        <div class="app-desc">xyz.incudal.com</div>
-        <button class="launch-btn" onclick="launch()">立即打开</button>
-        <div class="countdown" id="countdown">3 秒后自动跳转</div>
-        <div class="progress-bar" id="progress"></div>
+        <div class="app-url">xyz.incudal.com</div>
+        
+        <div class="btn-group">
+            <button class="btn btn-install" id="installBtn" onclick="installPWA()">
+                <span class="btn-icon">📲</span>
+                安装到桌面
+            </button>
+            <button class="btn btn-open" onclick="openSite()">
+                <span class="btn-icon">🌐</span>
+                直接打开网站
+            </button>
+        </div>
+        
+        <div class="hint">
+            <div class="hint-title">💡 为什么要安装？</div>
+            <div class="hint-text">
+                安装后可获得：<br>
+                • 桌面图标，一键启动<br>
+                • 全屏体验，无地址栏<br>
+                • 更快的加载速度
+            </div>
+        </div>
     </div>
 
     <script>
-        const TARGET_URL = 'https://xyz.incudal.com';
-        let countdown = 3;
-        let launched = false;
-
-        function launch() {
-            if (launched) return;
-            launched = true;
-            
-            const splash = document.getElementById('splash');
-            splash.classList.add('hide');
-            
-            setTimeout(() => {
-                window.location.href = TARGET_URL;
-            }, 500);
+        const SITE_URL = 'https://xyz.incudal.com';
+        const SITE_DOMAIN = 'xyz.incudal.com';
+        
+        // 加载网站图标
+        function loadFavicon() {
+            const icon = document.getElementById('appIcon');
+            icon.src = `https://www.google.com/s2/favicons?domain=${SITE_DOMAIN}&sz=128`;
+            icon.onerror = function() {
+                this.src = `https://${SITE_DOMAIN}/favicon.ico`;
+                this.onerror = function() {
+                    this.style.display = 'none';
+                };
+            };
         }
-
-        const timer = setInterval(() => {
-            countdown--;
-            document.getElementById('countdown').textContent = countdown + ' 秒后自动跳转';
-            document.getElementById('progress').style.width = ((3 - countdown) / 3 * 100) + '%';
+        
+        // 检测是否已安装为PWA
+        function checkInstalled() {
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
+                || window.navigator.standalone === true;
             
-            if (countdown <= 0) {
-                clearInterval(timer);
-                launch();
+            if (isStandalone) {
+                document.getElementById('installedBadge').classList.add('show');
+                document.getElementById('installBtn').style.display = 'none';
+                setTimeout(() => window.location.href = SITE_URL, 500);
             }
-        }, 1000);
+        }
+        
+        // 安装PWA
+        let deferredPrompt = null;
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+        });
+        
+        async function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    window.location.href = SITE_URL;
+                }
+                deferredPrompt = null;
+            } else {
+                showInstallGuide();
+            }
+        }
+        
+        function showInstallGuide() {
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+            
+            let guide = '';
+            if (isIOS || isSafari) {
+                guide = `iOS 安装步骤：
+1. 点击底部「分享」按钮 ⬆️
+2. 向下滑动找到「添加到主屏幕」
+3. 点击「添加」完成安装`;
+            } else {
+                guide = `安装步骤：
+1. 点击浏览器菜单 ⋮
+2. 选择「安装应用」或「添加到桌面」
+3. 确认安装`;
+            }
+            
+            alert(guide);
+        }
+        
+        function openSite() {
+            window.location.href = SITE_URL;
+        }
+        
+        // 初始化
+        loadFavicon();
+        checkInstalled();
     </script>
 </body>
 </html>

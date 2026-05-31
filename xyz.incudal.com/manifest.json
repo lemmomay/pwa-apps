@@ -1,27 +1,28 @@
 {
     "name": "Incudal",
     "short_name": "Incudal",
-    "description": "xyz.incudal.com - PWA 应用",
+    "description": "Incudal - xyz.incudal.com",
     "start_url": "./",
+    "scope": "./",
     "display": "standalone",
     "orientation": "any",
     "background_color": "#0f0c29",
     "theme_color": "#0f0c29",
     "icons": [
         {
-            "src": "icon-192.png",
+            "src": "https://www.google.com/s2/favicons?domain=xyz.incudal.com&sz=192",
             "sizes": "192x192",
             "type": "image/png",
-            "purpose": "any maskable"
+            "purpose": "any"
         },
         {
-            "src": "icon-512.png",
+            "src": "https://www.google.com/s2/favicons?domain=xyz.incudal.com&sz=512",
             "sizes": "512x512",
             "type": "image/png",
-            "purpose": "any maskable"
+            "purpose": "any"
         }
     ],
     "categories": ["entertainment"],
     "lang": "zh-CN",
-    "dir": "ltr"
+    "prefer_related_applications": false
 }
