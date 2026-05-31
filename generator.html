@@ -23,10 +23,10 @@
         const { useState, useCallback } = React;
 
         const DEFAULT_CONFIG = {
-            url: "https://hanime1.me",
-            name: "Hanime1",
-            shortName: "Hanime1",
-            description: "Hanime1 - Watch anime online",
+            url: "https://example.com",
+            name: "My App",
+            shortName: "App",
+            description: "My PWA App",
             themeColor: "#1a1a2e",
             bgColor: "#0f0f1a",
             accentColor: "#e94560",
@@ -34,7 +34,6 @@
             orientation: "any",
             enableOffline: true,
             enableNavBar: true,
-            splashText: "Loading...",
         };
 
         function generateManifest(cfg) {
@@ -48,17 +47,10 @@
                 theme_color: cfg.themeColor,
                 background_color: cfg.bgColor,
                 icons: [
-                    { src: "icons/icon-72.png", sizes: "72x72", type: "image/png" },
-                    { src: "icons/icon-96.png", sizes: "96x96", type: "image/png" },
-                    { src: "icons/icon-128.png", sizes: "128x128", type: "image/png" },
-                    { src: "icons/icon-144.png", sizes: "144x144", type: "image/png" },
-                    { src: "icons/icon-152.png", sizes: "152x152", type: "image/png" },
                     { src: "icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any maskable" },
-                    { src: "icons/icon-384.png", sizes: "384x384", type: "image/png" },
                     { src: "icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" },
                 ],
                 categories: ["entertainment"],
-                screenshots: [],
             }, null, 2);
         }
 
@@ -264,12 +256,109 @@ if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navi
 </svg>`;
         }
 
+        function generateDeployScript(cfg) {
+            const dirName = cfg.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+            return `#!/bin/bash
+# PWA 部署脚本 - ${cfg.name}
+# 使用方法: chmod +x deploy-${dirName}.sh && ./deploy-${dirName}.sh
+
+set -e
+
+# 配置
+APP_NAME="${cfg.name}"
+APP_DIR="${dirName}"
+REPO="lemmomay/pwa-apps"
+BRANCH="main"
+
+echo "🚀 开始部署 PWA: $APP_NAME"
+echo "📁 目录: $APP_DIR"
+echo ""
+
+# 检查 gh 是否安装
+if ! command -v gh &> /dev/null; then
+    echo "❌ 需要安装 GitHub CLI (gh)"
+    echo "   安装方式: https://cli.github.com/"
+    exit 1
+fi
+
+# 检查是否已登录
+if ! gh auth status &> /dev/null; then
+    echo "📝 请先登录 GitHub CLI:"
+    gh auth login
+fi
+
+# 创建临时目录
+TMPDIR=$(mktemp -d)
+trap "rm -rf $TMPDIR" EXIT
+
+echo "📦 生成文件..."
+
+# 生成所有文件
+cat > "$TMPDIR/index.html" << 'HTMLEOF'
+${generateIndex(cfg)}
+HTMLEOF
+
+cat > "$TMPDIR/manifest.json" << 'JSONEOF'
+${generateManifest(cfg)}
+JSONEOF
+
+cat > "$TMPDIR/sw.js" << 'SWEOF'
+${generateSW(cfg)}
+SWEOF
+
+cat > "$TMPDIR/offline.html" << 'OFFLINEEOF'
+${generateOffline(cfg)}
+OFFLINEEOF
+
+cat > "$TMPDIR/icon.svg" << 'SVGEOF'
+${generateIconSVG(cfg.name, cfg.accentColor, cfg.bgColor)}
+SVGEOF
+
+echo "📤 上传到 GitHub..."
+
+# 上传每个文件
+for file in "$TMPDIR"/*; do
+    filename=$(basename "$file")
+    echo "   上传: $APP_DIR/$filename"
+    gh api "repos/$REPO/contents/$APP_DIR/$filename" \
+        --method PUT \
+        -f message="Add PWA: $APP_NAME - $filename" \
+        -f content="$(base64 -w0 "$file")" \
+        -f branch="$BRANCH" \
+        --silent 2>/dev/null || echo "   ⚠️ 文件可能已存在，跳过"
+done
+
+echo ""
+echo "✅ 部署完成!"
+echo ""
+echo "🔗 访问地址: https://lemmomay.github.io/pwa-apps/$APP_DIR/"
+echo ""
+echo "📱 安装步骤:"
+echo "   1. 在手机浏览器打开上面的链接"
+echo "   2. 点击「安装到桌面」或使用浏览器菜单安装"
+`;
+        }
+
         function downloadFile(filename, content, mime = "text/plain") {
             const blob = new Blob([content], { type: mime });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url; a.download = filename; a.click();
             URL.revokeObjectURL(url);
+        }
+
+        function downloadAll(cfg) {
+            const dirName = cfg.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+            const files = {
+                [`${dirName}/index.html`]: generateIndex(cfg),
+                [`${dirName}/manifest.json`]: generateManifest(cfg),
+                [`${dirName}/sw.js`]: generateSW(cfg),
+                [`${dirName}/offline.html`]: generateOffline(cfg),
+                [`${dirName}/icon.svg`]: generateIconSVG(cfg.name, cfg.accentColor, cfg.bgColor),
+            };
+            Object.entries(files).forEach(([name, content], i) => {
+                setTimeout(() => downloadFile(name, content), i * 100);
+            });
         }
 
         const TABS = ["index.html", "manifest.json", "sw.js", "offline.html", "icon.svg"];
@@ -307,10 +396,10 @@ if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navi
                 setTimeout(() => setCopied(false), 1800);
             };
 
-            const downloadAll = () => {
-                Object.entries(files).forEach(([name, content]) => {
-                    setTimeout(() => downloadFile(name, content), 100);
-                });
+            const copyDeployScript = async () => {
+                const script = generateDeployScript(cfg);
+                await navigator.clipboard.writeText(script);
+                alert('部署脚本已复制！\n\n保存为 deploy.sh 后运行:\nchmod +x deploy.sh && ./deploy.sh');
             };
 
             const inputStyle = {
@@ -325,10 +414,12 @@ if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navi
                     {/* Header */}
                     <div style={{ borderBottom: "1px solid #1e1e32", padding: "0 24px",
                         display: "flex", alignItems: "center", gap: 12, height: 56, background: "#0e0e1a" }}>
-                        <div style={{ width: 32, height: 32, borderRadius: 8, background: cfg.accentColor,
-                            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>📱</div>
+                        <a href="./" style={{ textDecoration: 'none' }}>
+                            <div style={{ width: 32, height: 32, borderRadius: 8, background: cfg.accentColor,
+                                display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>📱</div>
+                        </a>
                         <div>
-                            <div style={{ fontWeight: 700, fontSize: 15, letterSpacing: "0.01em" }}>PWA 生成器</div>
+                            <div style={{ fontWeight: 700, fontSize: 15 }}>PWA 生成器</div>
                             <div style={{ fontSize: 11, color: "#666", marginTop: -1 }}>将任意网站打包成真正的应用</div>
                         </div>
                         <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
@@ -338,10 +429,17 @@ if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navi
                                         background: "transparent", border: "1px solid #333",
                                         color: "#aaa", padding: "6px 14px", borderRadius: 6,
                                         cursor: "pointer", fontSize: 13 }}>← 返回配置</button>
-                                    <button onClick={downloadAll} style={{
-                                        background: cfg.accentColor, border: "none",
-                                        color: "#fff", padding: "6px 16px", borderRadius: 6,
-                                        cursor: "pointer", fontSize: 13, fontWeight: 600 }}>⬇ 全部下载</button>
+                                    <button onClick={() => downloadAll(cfg)} style={{
+                                        background: '#333', border: "none", color: "#fff",
+                                        padding: "6px 16px", borderRadius: 6,
+                                        cursor: "pointer", fontSize: 13 }}>⬇ 下载文件</button>
+                                    <button onClick={() => {
+                                        const script = generateDeployScript(cfg);
+                                        downloadFile(`deploy-${cfg.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}.sh`, script);
+                                    }} style={{
+                                        background: '#22c55e', border: "none", color: "#fff",
+                                        padding: "6px 16px", borderRadius: 6,
+                                        cursor: "pointer", fontSize: 13, fontWeight: 600 }}>🚀 下载部署脚本</button>
                                 </>
                             )}
                         </div>
@@ -365,7 +463,7 @@ if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navi
                                 <input value={cfg.name} onChange={e => update("name", e.target.value)}
                                     style={inputStyle} placeholder="My App" />
                             </Field>
-                            <Field label="短名称 (图标下方)" style={{ flex: step === 0 ? "1 1 200px" : "none" }}>
+                            <Field label="短名称" style={{ flex: step === 0 ? "1 1 200px" : "none" }}>
                                 <input value={cfg.shortName} onChange={e => update("shortName", e.target.value)}
                                     style={inputStyle} placeholder="App" />
                             </Field>
@@ -385,7 +483,7 @@ if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navi
                                             borderRadius: 8, padding: "6px 12px", cursor: "pointer",
                                             display: "flex", alignItems: "center", gap: 6, color: "#fff", fontSize: 12,
                                         }}>
-                                            <span style={{ width: 10, height: 10, borderRadius: "50%", background: c.accent, display: "inline-block" }}/>
+                                            <span style={{ width: 10, height: 10, borderRadius: "50%", background: c.accent }}/>
                                             {c.label}
                                         </button>
                                     ))}
@@ -394,7 +492,7 @@ if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navi
                             <Field label="主题色" style={{ flex: step === 0 ? "0 0 auto" : "none" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                                     <input type="color" value={cfg.themeColor} onChange={e => update("themeColor", e.target.value)}
-                                        style={{ width: 40, height: 36, borderRadius: 6, border: "1px solid #333", cursor: "pointer", padding: 2, background: "#1a1a2e" }} />
+                                        style={{ width: 40, height: 36, borderRadius: 6, border: "1px solid #333", cursor: "pointer", padding: 2 }} />
                                     <input value={cfg.themeColor} onChange={e => update("themeColor", e.target.value)}
                                         style={{ ...inputStyle, width: 100 }} />
                                 </div>
@@ -402,7 +500,7 @@ if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navi
                             <Field label="背景色" style={{ flex: step === 0 ? "0 0 auto" : "none" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                                     <input type="color" value={cfg.bgColor} onChange={e => update("bgColor", e.target.value)}
-                                        style={{ width: 40, height: 36, borderRadius: 6, border: "1px solid #333", cursor: "pointer", padding: 2, background: "#0f0f1a" }} />
+                                        style={{ width: 40, height: 36, borderRadius: 6, border: "1px solid #333", cursor: "pointer", padding: 2 }} />
                                     <input value={cfg.bgColor} onChange={e => update("bgColor", e.target.value)}
                                         style={{ ...inputStyle, width: 100 }} />
                                 </div>
@@ -410,16 +508,16 @@ if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navi
                             <Field label="强调色" style={{ flex: step === 0 ? "0 0 auto" : "none" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                                     <input type="color" value={cfg.accentColor} onChange={e => update("accentColor", e.target.value)}
-                                        style={{ width: 40, height: 36, borderRadius: 6, border: "1px solid #333", cursor: "pointer", padding: 2, background: "#e94560" }} />
+                                        style={{ width: 40, height: 36, borderRadius: 6, border: "1px solid #333", cursor: "pointer", padding: 2 }} />
                                     <input value={cfg.accentColor} onChange={e => update("accentColor", e.target.value)}
                                         style={{ ...inputStyle, width: 100 }} />
                                 </div>
                             </Field>
                             <Field label="显示模式" style={{ flex: step === 0 ? "1 1 200px" : "none" }}>
                                 <select value={cfg.display} onChange={e => update("display", e.target.value)} style={inputStyle}>
-                                    <option value="standalone">standalone (推荐 - 无浏览器栏)</option>
+                                    <option value="standalone">standalone (推荐)</option>
                                     <option value="fullscreen">fullscreen (全屏)</option>
-                                    <option value="minimal-ui">minimal-ui (最小UI)</option>
+                                    <option value="minimal-ui">minimal-ui</option>
                                 </select>
                             </Field>
                             <Field label="屏幕方向" style={{ flex: step === 0 ? "1 1 180px" : "none" }}>
@@ -441,13 +539,12 @@ if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navi
                                         background: cfg.accentColor, border: "none", color: "#fff",
                                         padding: "12px 40px", borderRadius: 10, cursor: "pointer",
                                         fontSize: 15, fontWeight: 700, boxShadow: `0 0 30px ${cfg.accentColor}44`,
-                                        transition: "opacity 0.2s",
                                     }}>生成 PWA 文件 →</button>
                                 </div>
                             )}
                         </div>
 
-                        {/* Right Panel - Code Viewer */}
+                        {/* Right Panel */}
                         {step === 1 && (
                             <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
                                 <div style={{ display: "flex", borderBottom: "1px solid #1e1e32",
@@ -468,26 +565,22 @@ if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navi
                                             color: copied ? "#22c55e" : "#aaa", padding: "4px 12px",
                                             borderRadius: 6, cursor: "pointer", fontSize: 12,
                                         }}>{copied ? "✓ 已复制" : "复制"}</button>
-                                        <button onClick={() => downloadFile(activeTab, files[activeTab])} style={{
-                                            background: "#1e1e32", border: "1px solid #333",
-                                            color: "#aaa", padding: "4px 12px", borderRadius: 6,
-                                            cursor: "pointer", fontSize: 12,
-                                        }}>下载</button>
                                     </div>
                                 </div>
                                 <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
                                     <pre style={{ margin: 0, fontSize: 12, lineHeight: 1.65,
-                                        color: "#c8d3f5", fontFamily: "'Fira Code', 'Cascadia Code', monospace",
+                                        color: "#c8d3f5", fontFamily: "monospace",
                                         whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
                                         <code>{files[activeTab]}</code>
                                     </pre>
                                 </div>
                                 <div style={{ padding: "16px 24px", borderTop: "1px solid #1e1e32",
-                                    background: "#0e0e1a", fontSize: 12, color: "#666", lineHeight: 1.7 }}>
-                                    <strong style={{ color: "#aaa" }}>📋 部署步骤：</strong>
-                                    {" "}将所有文件放入同一目录 → 用 HTTPS 托管（Vercel/Netlify/Cloudflare Pages 均可免费）→ 手机浏览器访问 → 点击「添加到主屏幕」→ 即可像原生 App 使用。
+                                    background: "#0e0e1a", fontSize: 13, color: "#888", lineHeight: 1.7 }}>
+                                    <strong style={{ color: "#aaa" }}>📋 部署方式：</strong>
                                     <br/>
-                                    <span style={{ color: "#555" }}>⚠️ 图标：将 icon.svg 转换为各尺寸 PNG 放入 icons/ 文件夹，推荐使用 realfavicongenerator.net</span>
+                                    <span style={{ color: "#22c55e" }}>方式1 - 下载部署脚本：</span>点击「🚀 下载部署脚本」→ 本地运行脚本自动部署
+                                    <br/>
+                                    <span style={{ color: "#38bdf8" }}>方式2 - 手动部署：</span>点击「⬇ 下载文件」→ 解压到仓库目录 → git push
                                 </div>
                             </div>
                         )}
