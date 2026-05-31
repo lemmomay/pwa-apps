@@ -27,13 +27,13 @@ echo "图标文字: $ICON_TEXT"
 # 创建目录
 mkdir -p "$APP_DIR"
 
-# 创建 index.html
+# 创建 index.html（跳转模式）
 cat > "$APP_DIR/index.html" << EOF
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
@@ -47,9 +47,9 @@ cat > "$APP_DIR/index.html" << EOF
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background: #1a1a2e;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
-        #loading {
+        .splash {
             position: fixed;
             top: 0;
             left: 0;
@@ -61,87 +61,111 @@ cat > "$APP_DIR/index.html" << EOF
             align-items: center;
             justify-content: center;
             z-index: 1000;
-            transition: opacity 0.3s;
+            transition: opacity 0.5s, transform 0.5s;
         }
-        #loading.hidden {
+        .splash.hide {
             opacity: 0;
-            pointer-events: none;
+            transform: scale(1.1);
         }
-        .loader-icon {
-            width: 80px;
-            height: 80px;
+        .app-icon {
+            width: 100px;
+            height: 100px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 20px;
+            border-radius: 24px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 36px;
-            margin-bottom: 20px;
-            animation: pulse 2s infinite;
+            font-size: 48px;
+            margin-bottom: 24px;
+            box-shadow: 0 20px 40px rgba(102, 126, 234, 0.4);
+            animation: float 3s ease-in-out infinite;
         }
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
         }
-        .loader-text {
+        .app-name {
+            font-size: 28px;
+            font-weight: 700;
             color: #fff;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            font-size: 16px;
-            opacity: 0.8;
+            margin-bottom: 8px;
         }
-        .loader-bar {
-            width: 200px;
-            height: 3px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 2px;
-            margin-top: 16px;
-            overflow: hidden;
+        .app-desc {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 40px;
         }
-        .loader-bar::after {
-            content: '';
-            display: block;
-            width: 50%;
-            height: 100%;
-            background: linear-gradient(90deg, #00d2ff, #3a7bd5);
-            border-radius: 2px;
-            animation: loading 1.5s infinite;
-        }
-        @keyframes loading {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(300%); }
-        }
-        #main-frame {
-            width: 100%;
-            height: 100%;
+        .launch-btn {
+            padding: 16px 48px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
             border: none;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        .launch-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.5);
+        }
+        .launch-btn:active {
+            transform: translateY(0);
+        }
+        .countdown {
+            margin-top: 20px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.4);
+        }
+        .progress-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.1s linear;
         }
     </style>
 </head>
 <body>
-    <div id="loading">
-        <div class="loader-icon">${ICON_TEXT:0:1}</div>
-        <div class="loader-text">正在加载 ${APP_NAME}...</div>
-        <div class="loader-bar"></div>
+    <div class="splash" id="splash">
+        <div class="app-icon">${ICON_TEXT:0:1}</div>
+        <div class="app-name">${APP_NAME}</div>
+        <div class="app-desc">正在启动...</div>
+        <button class="launch-btn" onclick="launch()">立即打开</button>
+        <div class="countdown" id="countdown">3 秒后自动跳转</div>
+        <div class="progress-bar" id="progress"></div>
     </div>
-    <iframe id="main-frame" src="${WEBSITE_URL}" allow="autoplay; fullscreen; picture-in-picture"></iframe>
 
     <script>
-        const frame = document.getElementById('main-frame');
-        const loading = document.getElementById('loading');
+        const TARGET_URL = '${WEBSITE_URL}';
+        let countdown = 3;
+        let launched = false;
 
-        frame.onload = function() {
+        function launch() {
+            if (launched) return;
+            launched = true;
+            
+            const splash = document.getElementById('splash');
+            splash.classList.add('hide');
+            
             setTimeout(() => {
-                loading.classList.add('hidden');
-                setTimeout(() => loading.remove(), 300);
+                window.location.href = TARGET_URL;
             }, 500);
-        };
+        }
 
-        setTimeout(() => {
-            if (!loading.classList.contains('hidden')) {
-                loading.classList.add('hidden');
-                setTimeout(() => loading.remove(), 300);
+        const timer = setInterval(() => {
+            countdown--;
+            document.getElementById('countdown').textContent = countdown + ' 秒后自动跳转';
+            document.getElementById('progress').style.width = ((3 - countdown) / 3 * 100) + '%';
+            
+            if (countdown <= 0) {
+                clearInterval(timer);
+                launch();
             }
-        }, 10000);
+        }, 1000);
     </script>
 </body>
 </html>
@@ -176,55 +200,6 @@ cat > "$APP_DIR/manifest.json" << EOF
     "lang": "zh-CN",
     "dir": "ltr"
 }
-EOF
-
-# 创建 service worker
-cat > "$APP_DIR/sw.js" << 'EOF'
-const CACHE_NAME = 'app-v1';
-const STATIC_ASSETS = [
-    './',
-    './index.html',
-    './manifest.json',
-    './icon-192.png',
-    './icon-512.png'
-];
-
-self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(STATIC_ASSETS);
-        })
-    );
-    self.skipWaiting();
-});
-
-self.addEventListener('activate', (event) => {
-    event.waitUntil(
-        caches.keys().then((cacheNames) => {
-            return Promise.all(
-                cacheNames
-                    .filter((name) => name !== CACHE_NAME)
-                    .map((name) => caches.delete(name))
-            );
-        })
-    );
-    self.clients.claim();
-});
-
-self.addEventListener('fetch', (event) => {
-    if (event.request.url.startsWith(self.location.origin)) {
-        event.respondWith(
-            caches.match(event.request).then((response) => {
-                return response || fetch(event.request).then((fetchResponse) => {
-                    return caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, fetchResponse.clone());
-                        return fetchResponse;
-                    });
-                });
-            })
-        );
-    }
-});
 EOF
 
 # 创建 SVG 图标

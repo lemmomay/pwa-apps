@@ -6,8 +6,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#1a1a2e">
-    <title>Hanime1</title>
+    <meta name="theme-color" content="#0f0c29">
+    <title>Incudal</title>
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.png">
     <style>
@@ -24,7 +24,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -39,14 +39,14 @@
         .app-icon {
             width: 100px;
             height: 100px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
             border-radius: 24px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 48px;
             margin-bottom: 24px;
-            box-shadow: 0 20px 40px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 20px 40px rgba(240, 147, 251, 0.4);
             animation: float 3s ease-in-out infinite;
         }
         @keyframes float {
@@ -66,7 +66,7 @@
         }
         .launch-btn {
             padding: 16px 48px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
             color: #fff;
             border: none;
             border-radius: 50px;
@@ -74,11 +74,11 @@
             font-weight: 600;
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 10px 30px rgba(240, 147, 251, 0.4);
         }
         .launch-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.5);
+            box-shadow: 0 15px 40px rgba(240, 147, 251, 0.5);
         }
         .launch-btn:active {
             transform: translateY(0);
@@ -93,23 +93,23 @@
             bottom: 0;
             left: 0;
             height: 3px;
-            background: linear-gradient(90deg, #667eea, #764ba2);
+            background: linear-gradient(90deg, #f093fb, #f5576c);
             transition: width 0.1s linear;
         }
     </style>
 </head>
 <body>
     <div class="splash" id="splash">
-        <div class="app-icon">🎬</div>
-        <div class="app-name">Hanime1</div>
-        <div class="app-desc">动漫视频平台</div>
+        <div class="app-icon">📦</div>
+        <div class="app-name">Incudal</div>
+        <div class="app-desc">xyz.incudal.com</div>
         <button class="launch-btn" onclick="launch()">立即打开</button>
         <div class="countdown" id="countdown">3 秒后自动跳转</div>
         <div class="progress-bar" id="progress"></div>
     </div>
 
     <script>
-        const TARGET_URL = 'https://hanime1.me';
+        const TARGET_URL = 'https://xyz.incudal.com';
         let countdown = 3;
         let launched = false;
 
@@ -125,7 +125,6 @@
             }, 500);
         }
 
-        // 倒计时自动跳转
         const timer = setInterval(() => {
             countdown--;
             document.getElementById('countdown').textContent = countdown + ' 秒后自动跳转';
