@@ -1,62 +1,41 @@
 const CACHE_NAME = 'hanime1-v1';
-const STATIC_ASSETS = [
-    './',
-    './index.html',
-    './manifest.json',
-    './icon-192.png',
-    './icon-512.png'
-];
+const OFFLINE_URL = './offline.html';
+const PRECACHE_ASSETS = ['./', './index.html', './offline.html', './manifest.json'];
 
-// 安装 - 缓存静态资源
-self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(STATIC_ASSETS);
-        })
-    );
-    self.skipWaiting();
+self.addEventListener('install', event => {
+    event.waitUntil((async () => {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.addAll(PRECACHE_ASSETS);
+        await self.skipWaiting();
+    })());
 });
 
-// 激活 - 清理旧缓存
-self.addEventListener('activate', (event) => {
-    event.waitUntil(
-        caches.keys().then((cacheNames) => {
-            return Promise.all(
-                cacheNames
-                    .filter((name) => name !== CACHE_NAME)
-                    .map((name) => caches.delete(name))
-            );
-        })
-    );
-    self.clients.claim();
+self.addEventListener('activate', event => {
+    event.waitUntil((async () => {
+        const keys = await caches.keys();
+        await Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)));
+        await self.clients.claim();
+    })());
 });
 
-// 拦截请求 - 缓存优先策略
-self.addEventListener('fetch', (event) => {
-    // 只缓存同源的静态资源
-    if (event.request.url.startsWith(self.location.origin)) {
-        event.respondWith(
-            caches.match(event.request).then((response) => {
-                return response || fetch(event.request).then((fetchResponse) => {
-                    return caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, fetchResponse.clone());
-                        return fetchResponse;
-                    });
-                });
-            })
-        );
+self.addEventListener('fetch', event => {
+    if (event.request.mode === 'navigate') {
+        event.respondWith((async () => {
+            try { return await fetch(event.request); }
+            catch { return (await caches.open(CACHE_NAME)).match(OFFLINE_URL); }
+        })());
+        return;
     }
-});
-
-// 处理通知点击
-self.addEventListener('notificationclick', (event) => {
-    event.notification.close();
-    event.waitUntil(
-        clients.matchAll({ type: 'window' }).then((clientList) => {
-            if (clientList.length > 0) {
-                return clientList[0].focus();
+    event.respondWith((async () => {
+        const cached = await caches.match(event.request);
+        if (cached) return cached;
+        try {
+            const response = await fetch(event.request);
+            if (response.ok && event.request.method === 'GET') {
+                const cache = await caches.open(CACHE_NAME);
+                cache.put(event.request, response.clone());
             }
-            return clients.openWindow('./');
-        })
-    );
+            return response;
+        } catch { return new Response('Network error', { status: 408 }); }
+    })());
 });

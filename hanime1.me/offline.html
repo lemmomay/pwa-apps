@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hanime1 - 离线</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0f0f1a; color: #fff; font-family: 'Segoe UI', sans-serif;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        min-height: 100vh; text-align: center; padding: 2rem; }
+    .icon { font-size: 4rem; margin-bottom: 1.5rem; animation: pulse 2s infinite; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.8rem; color: #e94560; }
+    p { color: #aaa; margin-bottom: 2rem; line-height: 1.6; }
+    button { background: #e94560; color: #fff; border: none;
+        padding: 0.8rem 2rem; border-radius: 999px; font-size: 1rem;
+        cursor: pointer; transition: opacity 0.2s; }
+    button:hover { opacity: 0.85; }
+    @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
+</style>
+</head>
+<body>
+    <div class="icon">📡</div>
+    <h1>你已离线</h1>
+    <p>当前没有网络连接。<br>请检查网络后重试。</p>
+    <button onclick="window.location.reload()">重新连接</button>
+</body>
+</html>
