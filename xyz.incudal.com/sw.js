@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hanime1-launcher-v2';
+const CACHE_NAME = 'incudal-launcher-v1';
 const APP_SHELL = ['./', './index.html', './manifest.json', './icon.svg', './offline.html'];
 
 self.addEventListener('install', event => {

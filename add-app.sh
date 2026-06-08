@@ -1,283 +1,223 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-# 添加新 PWA 应用的脚本
-# 用法: ./add-app.sh <app-name> <website-url> [icon-text]
-
-if [ $# -lt 2 ]; then
-    echo "用法: $0 <应用名称> <网站URL> [图标文字]"
-    echo "示例: $0 youtube https://youtube.com YT"
+if [ "$#" -lt 2 ]; then
+    printf '用法: %s <应用名称> <网站URL> [图标文字]\n' "$0"
+    printf '示例: %s youtube https://youtube.com Y\n' "$0"
     exit 1
 fi
 
 APP_NAME="$1"
 WEBSITE_URL="$2"
 ICON_TEXT="${3:-${APP_NAME:0:1}}"
-APP_DIR="$APP_NAME"
+APP_DIR="$(printf '%s' "$APP_NAME" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9._-' '-' | sed 's/^-//;s/-$//')"
+DOMAIN="$(printf '%s' "$WEBSITE_URL" | sed -E 's|^https?://||;s|/.*||')"
+CACHE_ID="$(printf '%s' "$APP_DIR" | tr -cs 'a-z0-9' '-')"
 
-# 从URL提取域名
-DOMAIN=$(echo "$WEBSITE_URL" | sed -E 's|^https?://||;s|/.*||')
-
-# 检查目录是否已存在
-if [ -d "$APP_DIR" ]; then
-    echo "错误: 目录 '$APP_DIR' 已存在"
+if [ -z "$APP_DIR" ] || [ -z "$DOMAIN" ]; then
+    printf '错误: 应用名称或 URL 无效\n' >&2
     exit 1
 fi
 
-echo "创建 PWA 应用: $APP_NAME"
-echo "网站 URL: $WEBSITE_URL"
-echo "域名: $DOMAIN"
-echo "图标文字: $ICON_TEXT"
+if [ -d "$APP_DIR" ]; then
+    printf "错误: 目录 '%s' 已存在\n" "$APP_DIR" >&2
+    exit 1
+fi
 
-# 创建目录
 mkdir -p "$APP_DIR"
 
-# 创建 index.html（跳转模式）
-cat > "$APP_DIR/index.html" << 'HTMLEOF'
+cat > "$APP_DIR/index.html" <<EOF
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0f172a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="$APP_NAME">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#1a1a2e">
-    <title>APPNAME_PLACEHOLDER</title>
+    <title>$APP_NAME</title>
     <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body {
-            width: 100%;
-            height: 100%;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #1a1a2e;
-        }
-        .container {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            text-align: center;
-        }
-        .app-icon {
-            width: 100px;
-            height: 100px;
-            border-radius: 22px;
-            margin-bottom: 24px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-            background: #fff;
-            object-fit: contain;
-        }
-        .app-name {
-            font-size: 28px;
-            font-weight: 700;
-            color: #fff;
-            margin-bottom: 8px;
-        }
-        .app-url {
-            font-size: 14px;
-            color: rgba(255,255,255,0.5);
-            margin-bottom: 40px;
-        }
-        .btn-group {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            width: 100%;
-            max-width: 300px;
-        }
-        .btn {
-            padding: 16px 32px;
-            border: none;
-            border-radius: 50px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-        .btn:active { transform: scale(0.98); }
-        .btn-install {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #fff;
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
-        }
-        .btn-open {
-            background: rgba(255,255,255,0.1);
-            color: #fff;
-            border: 1px solid rgba(255,255,255,0.2);
-        }
-        .btn-icon { font-size: 20px; }
-        .hint {
-            margin-top: 30px;
-            padding: 16px;
-            background: rgba(255,255,255,0.05);
-            border-radius: 12px;
-            max-width: 320px;
-        }
-        .hint-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: #667eea;
-            margin-bottom: 8px;
-        }
-        .hint-text {
-            font-size: 13px;
-            color: rgba(255,255,255,0.6);
-            line-height: 1.6;
-        }
-        .installed-badge {
-            display: none;
-            padding: 8px 16px;
-            background: rgba(76, 175, 80, 0.2);
-            border: 1px solid rgba(76, 175, 80, 0.3);
-            border-radius: 20px;
-            color: #4CAF50;
-            font-size: 13px;
-            margin-bottom: 20px;
-        }
-        .installed-badge.show {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
+        :root { color-scheme: dark; --bg: #07111f; --card: rgba(255,255,255,.08); --line: rgba(255,255,255,.14); --text: #f8fafc; --muted: #94a3b8; --accent: #38bdf8; }
+        * { box-sizing: border-box; }
+        body { margin: 0; min-height: 100vh; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: radial-gradient(circle at 80% 8%, rgba(56,189,248,.28), transparent 30rem), var(--bg); color: var(--text); display: grid; place-items: center; padding: max(22px, env(safe-area-inset-top)) 18px max(22px, env(safe-area-inset-bottom)); }
+        main { width: min(480px, 100%); }
+        .card { border: 1px solid var(--line); border-radius: 32px; padding: 28px; background: linear-gradient(180deg, var(--card), rgba(255,255,255,.045)); box-shadow: 0 28px 90px rgba(0,0,0,.34); }
+        .icon { width: 88px; height: 88px; border-radius: 25px; display: grid; place-items: center; background: linear-gradient(135deg, #38bdf8, #818cf8); color: #07111f; font-size: 44px; font-weight: 900; box-shadow: 0 18px 44px rgba(56,189,248,.28); }
+        h1 { margin: 24px 0 8px; font-size: 44px; line-height: .95; letter-spacing: -.07em; }
+        .domain { color: var(--accent); font-size: 15px; word-break: break-all; }
+        p { color: var(--muted); line-height: 1.7; margin: 22px 0 0; }
+        .actions { display: grid; gap: 12px; margin-top: 28px; }
+        button, a.button { border: 0; border-radius: 18px; padding: 16px 18px; font: inherit; font-weight: 750; text-decoration: none; text-align: center; cursor: pointer; }
+        .primary { background: var(--accent); color: #07111f; }
+        .secondary { background: rgba(255,255,255,.1); color: var(--text); border: 1px solid var(--line); }
+        .install-hint { margin-top: 16px; border-radius: 20px; padding: 15px; border: 1px solid var(--line); background: rgba(255,255,255,.055); color: var(--muted); font-size: 14px; line-height: 1.65; }
+        .hidden { display: none; }
+        .back { display: inline-block; margin-top: 18px; color: var(--muted); text-decoration: none; font-size: 14px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="installed-badge" id="installedBadge">
-            <span>✓</span> 已安装为 PWA
-        </div>
-        
-        <img class="app-icon" id="appIcon" src="" alt="icon">
-        <div class="app-name">APPNAME_PLACEHOLDER</div>
-        <div class="app-url">DOMAIN_PLACEHOLDER</div>
-        
-        <div class="btn-group">
-            <button class="btn btn-install" id="installBtn" onclick="installPWA()">
-                <span class="btn-icon">📲</span>
-                安装到桌面
-            </button>
-            <button class="btn btn-open" onclick="openSite()">
-                <span class="btn-icon">🌐</span>
-                直接打开网站
-            </button>
-        </div>
-        
-        <div class="hint">
-            <div class="hint-title">💡 为什么要安装？</div>
-            <div class="hint-text">
-                安装后可获得：<br>
-                • 桌面图标，一键启动<br>
-                • 全屏体验，无地址栏<br>
-                • 更快的加载速度
+    <main>
+        <section class="card" aria-labelledby="app-title">
+            <div class="icon">$ICON_TEXT</div>
+            <h1 id="app-title">$APP_NAME</h1>
+            <div class="domain">$DOMAIN</div>
+            <p>这是一个稳定的 PWA 启动壳。安装后从桌面打开，再进入目标网站；不使用跨域 iframe，也不依赖远程 favicon。</p>
+            <div class="actions">
+                <button class="primary hidden" id="install-btn" type="button">安装到桌面</button>
+                <a class="button secondary" href="$WEBSITE_URL" rel="noopener">打开目标网站</a>
             </div>
-        </div>
-    </div>
-
+            <div class="install-hint" id="hint">如果没有看到安装按钮，请使用浏览器菜单中的“添加到主屏幕”或“安装应用”。</div>
+        </section>
+        <a class="back" href="../">返回应用列表</a>
+    </main>
     <script>
-        const SITE_URL = 'WEBSITEURL_PLACEHOLDER';
-        const SITE_DOMAIN = 'DOMAIN_PLACEHOLDER';
-        
-        function loadFavicon() {
-            const icon = document.getElementById('appIcon');
-            icon.src = `https://www.google.com/s2/favicons?domain=${SITE_DOMAIN}&sz=128`;
-            icon.onerror = function() {
-                this.src = `https://${SITE_DOMAIN}/favicon.ico`;
-                this.onerror = function() { this.style.display = 'none'; };
-            };
+        const targetUrl = '$WEBSITE_URL';
+        let deferredPrompt;
+        const installButton = document.getElementById('install-btn');
+        const hint = document.getElementById('hint');
+        const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+        if (standalone) {
+            hint.textContent = '已从桌面模式启动，正在进入目标网站。';
+            setTimeout(() => { window.location.href = targetUrl; }, 450);
         }
-        
-        function checkInstalled() {
-            const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
-                || window.navigator.standalone === true;
-            if (isStandalone) {
-                document.getElementById('installedBadge').classList.add('show');
-                document.getElementById('installBtn').style.display = 'none';
-                setTimeout(() => window.location.href = SITE_URL, 500);
-            }
-        }
-        
-        let deferredPrompt = null;
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
+
+        window.addEventListener('beforeinstallprompt', event => {
+            event.preventDefault();
+            deferredPrompt = event;
+            installButton.classList.remove('hidden');
+            hint.textContent = '当前浏览器支持一键安装。安装后可从桌面图标启动。';
         });
-        
-        async function installPWA() {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                const { outcome } = await deferredPrompt.userChoice;
-                if (outcome === 'accepted') window.location.href = SITE_URL;
-                deferredPrompt = null;
-            } else {
-                showInstallGuide();
-            }
+
+        installButton.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            await deferredPrompt.userChoice;
+            deferredPrompt = undefined;
+            installButton.classList.add('hidden');
+        });
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(console.warn));
         }
-        
-        function showInstallGuide() {
-            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-            let guide = isIOS 
-                ? `iOS 安装步骤：\n1. 点击底部「分享」按钮 ⬆️\n2. 向下滑动找到「添加到主屏幕」\n3. 点击「添加」完成安装`
-                : `安装步骤：\n1. 点击浏览器菜单 ⋮\n2. 选择「安装应用」或「添加到桌面」\n3. 确认安装`;
-            alert(guide);
-        }
-        
-        function openSite() {
-            window.location.href = SITE_URL;
-        }
-        
-        loadFavicon();
-        checkInstalled();
     </script>
 </body>
 </html>
-HTMLEOF
+EOF
 
-# 替换占位符
-sed -i "s|APPNAME_PLACEHOLDER|${APP_NAME}|g" "$APP_DIR/index.html"
-sed -i "s|WEBSITEURL_PLACEHOLDER|${WEBSITE_URL}|g" "$APP_DIR/index.html"
-sed -i "s|DOMAIN_PLACEHOLDER|${DOMAIN}|g" "$APP_DIR/index.html"
-
-# 创建 manifest.json
-cat > "$APP_DIR/manifest.json" << EOF
+cat > "$APP_DIR/manifest.json" <<EOF
 {
-    "name": "${APP_NAME}",
-    "short_name": "${APP_NAME}",
-    "description": "${APP_NAME} - ${DOMAIN}",
-    "start_url": "./",
-    "scope": "./",
-    "display": "standalone",
-    "orientation": "any",
-    "background_color": "#1a1a2e",
-    "theme_color": "#1a1a2e",
-    "icons": [
-        {
-            "src": "https://www.google.com/s2/favicons?domain=${DOMAIN}&sz=192",
-            "sizes": "192x192",
-            "type": "image/png",
-            "purpose": "any"
-        },
-        {
-            "src": "https://www.google.com/s2/favicons?domain=${DOMAIN}&sz=512",
-            "sizes": "512x512",
-            "type": "image/png",
-            "purpose": "any"
-        }
-    ],
-    "categories": ["entertainment"],
-    "lang": "zh-CN",
-    "prefer_related_applications": false
+  "name": "$APP_NAME",
+  "short_name": "$APP_NAME",
+  "description": "$APP_NAME desktop launcher",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#07111f",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["utilities"],
+  "lang": "zh-CN",
+  "prefer_related_applications": false
 }
 EOF
 
-echo ""
-echo "✅ PWA 应用创建成功!"
-echo ""
-echo "文件已创建:"
-ls -la "$APP_DIR/"
+cat > "$APP_DIR/sw.js" <<EOF
+const CACHE_NAME = '$CACHE_ID-launcher-v1';
+const APP_SHELL = ['./', './index.html', './manifest.json', './icon.svg', './offline.html'];
+
+self.addEventListener('install', event => {
+    event.waitUntil((async () => {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.addAll(APP_SHELL);
+        await self.skipWaiting();
+    })());
+});
+
+self.addEventListener('activate', event => {
+    event.waitUntil((async () => {
+        const names = await caches.keys();
+        await Promise.all(names.filter(name => name !== CACHE_NAME).map(name => caches.delete(name)));
+        await self.clients.claim();
+    })());
+});
+
+self.addEventListener('fetch', event => {
+    if (event.request.method !== 'GET') return;
+
+    if (event.request.mode === 'navigate') {
+        event.respondWith((async () => {
+            try {
+                return await fetch(event.request);
+            } catch {
+                return (await caches.open(CACHE_NAME)).match('./offline.html');
+            }
+        })());
+        return;
+    }
+
+    event.respondWith((async () => {
+        const cached = await caches.match(event.request);
+        if (cached) return cached;
+        const response = await fetch(event.request);
+        if (response.ok && new URL(event.request.url).origin === self.location.origin) {
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(event.request, response.clone());
+        }
+        return response;
+    })());
+});
+EOF
+
+cat > "$APP_DIR/offline.html" <<EOF
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0f172a">
+    <title>$APP_NAME 离线</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #07111f; color: #f8fafc; }
+        main { width: min(420px, 100%); padding: 28px; border-radius: 28px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.08); text-align: center; }
+        .mark { width: 72px; height: 72px; margin: 0 auto 20px; border-radius: 22px; display: grid; place-items: center; background: #38bdf8; color: #07111f; font-size: 36px; font-weight: 900; }
+        h1 { margin: 0; font-size: 28px; letter-spacing: -.04em; }
+        p { color: #94a3b8; line-height: 1.7; }
+        button { border: 0; border-radius: 16px; padding: 14px 18px; background: #38bdf8; color: #07111f; font: inherit; font-weight: 750; }
+    </style>
+</head>
+<body>
+    <main>
+        <div class="mark">!</div>
+        <h1>当前离线</h1>
+        <p>启动页已缓存，但目标网站需要网络连接。恢复网络后重试。</p>
+        <button type="button" onclick="window.location.reload()">重新尝试</button>
+    </main>
+</body>
+</html>
+EOF
+
+cat > "$APP_DIR/icon.svg" <<EOF
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+    <rect width="512" height="512" rx="110" fill="#07111f"/>
+    <circle cx="376" cy="116" r="160" fill="#38bdf8" opacity="0.25"/>
+    <rect x="126" y="92" width="260" height="328" rx="72" fill="#38bdf8"/>
+    <text x="256" y="334" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="250" font-weight="900" fill="#07111f">$ICON_TEXT</text>
+</svg>
+EOF
+
+printf '已创建 %s\n' "$APP_DIR"
+printf '请在 index.html 中添加对应应用卡片。\n'
