@@ -17,7 +17,9 @@ pwa-apps/
     ├── manifest.json   # PWA 配置
     ├── sw.js           # Service Worker
     ├── offline.html    # 离线页
-    └── icon.svg        # 本地图标
+    ├── icon.svg        # SVG 图标
+    ├── icon-192.png    # 安装图标
+    └── icon-512.png    # 安装图标
 ```
 
 ## 添加新应用
@@ -34,8 +36,9 @@ pwa-apps/
 
 - 不要新增 iframe WebView 壳，第三方站点常通过响应头或 CSP 禁止嵌入。
 - 不要在 manifest 中使用远程图标，优先使用本地 `icon.svg`。
-- 每个应用都应包含 `index.html`、`manifest.json`、`sw.js`、`offline.html`、`icon.svg`。
+- 每个应用都应包含 `index.html`、`manifest.json`、`sw.js`、`offline.html`、`icon.svg`、`icon-192.png`、`icon-512.png`。
 - Service Worker 只缓存本应用壳文件，不尝试缓存第三方目标站点。
+- manifest 需要声明 PNG 图标；只声明 SVG 会降低 Android Chrome 安装兼容性。
 
 ## 常见任务
 

@@ -1,5 +1,5 @@
-const CACHE_NAME = 'incudal-launcher-v1';
-const APP_SHELL = ['./', './index.html', './manifest.json', './icon.svg', './offline.html'];
+const CACHE_NAME = 'incudal-launcher-v2';
+const APP_SHELL = ['./', './index.html', './manifest.json', './icon.svg', './icon-192.png', './icon-512.png', './offline.html'];
 
 self.addEventListener('install', event => {
     event.waitUntil((async () => {

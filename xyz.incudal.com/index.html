@@ -11,6 +11,7 @@
     <title>Incudal</title>
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icon-192.png">
     <style>
         :root { color-scheme: dark; --bg: #07111f; --card: rgba(255,255,255,.08); --line: rgba(255,255,255,.14); --text: #f8fafc; --muted: #94a3b8; --accent: #38bdf8; }
         * { box-sizing: border-box; }
@@ -36,9 +37,9 @@
             <div class="icon">I</div>
             <h1 id="app-title">Incudal</h1>
             <div class="domain">xyz.incudal.com</div>
-            <p>这是一个稳定的 PWA 启动壳。安装后从桌面打开，再进入目标网站；不再依赖远程 favicon 或不可控的 iframe。</p>
+            <p>这是一个稳定的 PWA 启动壳。安装后从桌面打开，再手动进入目标网站；不再依赖远程 favicon 或不可控的 iframe。</p>
             <div class="actions">
-                <button class="primary hidden" id="install-btn" type="button">安装到桌面</button>
+                <button class="primary" id="install-btn" type="button">安装到桌面</button>
                 <a class="button secondary" href="https://xyz.incudal.com" rel="noopener">打开目标网站</a>
             </div>
             <div class="install-hint" id="hint">如果没有看到安装按钮，请使用浏览器菜单中的“添加到主屏幕”或“安装应用”。</div>
@@ -52,25 +53,30 @@
         const hint = document.getElementById('hint');
         const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
-        if (standalone) {
-            hint.textContent = '已从桌面模式启动，正在进入目标网站。';
-            setTimeout(() => { window.location.href = targetUrl; }, 450);
-        }
+        if (standalone) hint.textContent = '已从桌面模式启动。点击“打开目标网站”进入网站。';
 
         window.addEventListener('beforeinstallprompt', event => {
             event.preventDefault();
             deferredPrompt = event;
-            installButton.classList.remove('hidden');
             hint.textContent = '当前浏览器支持一键安装。安装后可从桌面图标启动。';
         });
 
         installButton.addEventListener('click', async () => {
-            if (!deferredPrompt) return;
+            if (!deferredPrompt) {
+                showInstallGuide();
+                return;
+            }
             deferredPrompt.prompt();
             await deferredPrompt.userChoice;
             deferredPrompt = undefined;
-            installButton.classList.add('hidden');
         });
+
+        function showInstallGuide() {
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            hint.textContent = isIOS
+                ? 'iOS 安装：点击 Safari 分享按钮，然后选择“添加到主屏幕”。'
+                : 'Android 安装：点击浏览器菜单，选择“安装应用”或“添加到主屏幕”。如果菜单里没有安装项，请等待页面加载完成后刷新一次。';
+        }
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(console.warn));

@@ -1,5 +1,5 @@
-const CACHE_NAME = 'hanime1-launcher-v2';
-const APP_SHELL = ['./', './index.html', './manifest.json', './icon.svg', './offline.html'];
+const CACHE_NAME = 'hanime1-launcher-v3';
+const APP_SHELL = ['./', './index.html', './manifest.json', './icon.svg', './icon-192.png', './icon-512.png', './offline.html'];
 
 self.addEventListener('install', event => {
     event.waitUntil((async () => {

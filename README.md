@@ -17,13 +17,17 @@ pwa-apps/
 │   ├── manifest.json       # PWA manifest
 │   ├── sw.js               # Service Worker
 │   ├── offline.html        # 离线页
-│   └── icon.svg            # 本地图标
+│   ├── icon.svg            # SVG 图标
+│   ├── icon-192.png        # Android/Chrome 安装图标
+│   └── icon-512.png        # Android/Chrome 安装图标
 └── xyz.incudal.com/
     ├── index.html
     ├── manifest.json
     ├── sw.js
     ├── offline.html
-    └── icon.svg
+    ├── icon.svg
+    ├── icon-192.png
+    └── icon-512.png
 ```
 
 ## 使用方式
@@ -31,7 +35,9 @@ pwa-apps/
 1. 部署到 GitHub Pages。
 2. 在手机浏览器打开导航页或某个应用页。
 3. 通过浏览器菜单选择“添加到主屏幕”或“安装应用”。
-4. 从桌面图标启动，应用页会进入目标网站。
+4. 从桌面图标启动后，点击“打开目标网站”进入网站。
+
+说明：Android Chrome 通常需要页面加载完成并成功注册 Service Worker 后才会出现安装项。首次打开如果菜单里没有“安装应用”，刷新一次应用页再看浏览器菜单。
 
 ## 添加新应用
 
@@ -53,6 +59,8 @@ pwa-apps/
 - `sw.js`
 - `offline.html`
 - `icon.svg`
+- `icon-192.png`
+- `icon-512.png`
 
 脚本不会自动修改主页。创建后需要在根目录 `index.html` 的应用列表中添加一张卡片。
 
@@ -64,6 +72,7 @@ pwa-apps/
 - `sw.js`：缓存 PWA 启动壳，让应用页离线时仍可打开。
 - `offline.html`：网络不可用时的本地提示页。
 - `index.html`：安装入口和目标网站跳转入口。
+- `icon-192.png` / `icon-512.png`：提升 Android Chrome 安装兼容性。
 
 缓存策略：
 
@@ -76,6 +85,7 @@ pwa-apps/
 
 - 这个项目不能绕过第三方网站的登录、地区、内容策略或浏览器限制。
 - 目标网站本身需要网络，离线时只能打开本地启动壳和离线页。
+- 安装后的 PWA scope 仍属于 GitHub Pages，进入第三方网站会离开本地 scope；这是浏览器安全模型决定的。
 - iOS Safari 的 PWA 支持仍有限，安装入口通常在分享菜单里。
 
 ## 部署
